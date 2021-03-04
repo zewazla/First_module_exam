@@ -1,10 +1,10 @@
-const dateFrom = getPrevDay(6);
+const dateFrom = getPrevDay(10);
 const dateTo = getPrevDay(0);
-const URL = `https://api.carbonintensity.org.uk/intensity/${dateFrom}/${dateTo}`;
+const URL = `https://api.carbonintensity.org.uk/intensity/`;
 
 (() => {
-    fetchData()
-        .then(calcutateStatistics)
+    fetchData(dateFrom, dateTo)
+        .then(function(response) { return calcutateStatistics(response, dateFrom, dateTo) })
         .then(display);
 })();
 
@@ -14,24 +14,24 @@ function getPrevDay(x) {
     return date.toISOString().slice(0, 10)
 }
 
-async function fetchData() {
-    let response = await fetch(URL);
+async function fetchData(dateFrom, dateTo) {
+    let response = await fetch(`${URL}${dateFrom}/${dateTo}`);
     if (!response.ok) {
         throw Error("Cannnot get response");
     }
     let responseJson = await response.json();
-    console.log(responseJson);
     return responseJson.data;
 }
 
-async function calcutateStatistics(dataList) {
-    const a = getData(dataList, getPrevDay(1));
-    console.log(a);
-    const b = getData(dataList, getPrevDay(2));
-    const c = getData(dataList, getPrevDay(3));
-    const d = getData(dataList, getPrevDay(4));
-    const e = getData(dataList, getPrevDay(5));
-    return [a, b, c, d, e];
+async function calcutateStatistics(dataList, dateFrom, dateTo) {
+    const diffTime = Math.abs(new Date(dateFrom) - new Date(dateTo));
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const results = [];
+
+    for (let i = 1; i <= diffDays; i++) {
+        results.push(getData(dataList, getPrevDay(i)))
+    }
+    return results;
 }
 
 
@@ -40,7 +40,7 @@ function getData(dataList, date) {
         .filter(e => e.to.startsWith(date))
         .map(e => e.intensity.forecast)
         .sort((a, b) => b - a);
-    console.log(filteredData);
+
     const minForecast = filteredData[filteredData.length - 1];
     const maxForecast = filteredData[0];
 
@@ -56,9 +56,9 @@ async function display(x) {
 }
 
 function createDiv(x) {
-    let colorName = (x.min > 250 || x.max > 250)
-        ? "red"
-        : "green";
+    let colorName = (x.min > 250 || x.max > 250) ?
+        "red" :
+        "green";
 
     let newDiv = document.createElement("div");
     newDiv.innerHTML = `
@@ -69,4 +69,3 @@ function createDiv(x) {
 
     document.querySelector(".container").appendChild(newDiv);
 }
-
